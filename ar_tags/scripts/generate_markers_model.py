@@ -5,6 +5,7 @@ import argparse
 from xml.dom.minidom import parse
 import os
 import sys
+from PIL import Image
 
 parser = argparse.ArgumentParser(usage='convert offset of all dae files in a directory')
 parser.add_argument(
@@ -14,16 +15,22 @@ parser.add_argument(
 parser.add_argument('-s', '--size', default="500", help='marker size in mm')
 parser.add_argument(
     '-v', '--verbose', dest='verbose', action='store_true', help='verbose mode')
+parser.add_argument('-t', '--template', default='$HOME/marker0', help='location of marker templates')
 parser.set_defaults(verbose=False)
 
 args = parser.parse_args()
 
 args.gazebodir = os.path.expandvars(args.gazebodir)
 args.input = os.path.expandvars(args.input)
+args.templatedir = os.path.expandvars(args.template)
 
 if not os.path.isdir(args.input):
     print("provided input is not a directory")
     sys.exit()
+
+if not os.path.isdir(args.templatedir):
+	print("provided template dir is not a directory");
+	sys.exit()
 
 # Open every collada file
 if args.verbose:
@@ -34,7 +41,7 @@ for image_file in file_list:
     if not image_file.endswith('.png'):
         continue
     filename_without_ext = image_file[0:image_file.rfind('.')]
-    cmd = "cp -r " + os.path.join(args.gazebodir, "marker0") + \
+    cmd = "cp -r " + os.path.join(args.templatedir, "marker0") + \
           " " + os.path.join(args.gazebodir, filename_without_ext.lower())
     if args.verbose:
         print(cmd)
@@ -44,9 +51,19 @@ for image_file in file_list:
     if args.verbose:
         print(cmd)
     os.system(cmd)
-    cmd = "cp " + os.path.join(args.input, image_file) + " " + \
-          os.path.join(args.gazebodir, filename_without_ext.lower(),
-                       "materials", "textures")
+
+    src_im = Image.open(os.path.join(args.input, image_file))
+    src_im.convert('RGB')
+    angle = 180
+    dst_im =src_im.rotate(angle)
+    dst_img_file = image_file
+    dst_im.save (dst_img_file, format="PNG")
+
+    cmd = "mv " + image_file + " " + os.path.join(args.gazebodir, filename_without_ext.lower(),"materials", "textures")
+
+    #cmd = "cp " + os.path.join(args.input, image_file) + " " + \
+    #      os.path.join(args.gazebodir, filename_without_ext.lower(),
+    #                   "materials", "textures")
     if args.verbose:
         print(cmd)
     os.system(cmd)
